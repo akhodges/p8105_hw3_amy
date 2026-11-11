@@ -1,0 +1,161 @@
+---
+title: "Data Science: Homework 3"
+author: "Amy Hodges"
+date: "2026-10-29"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(patchwork)
+
+library(p8105.datasets)
+data("ny_noaa")
+```
+
+***PROBLEM 1***
+```{r, warning = FALSE}
+# Exploring the data
+head(ny_noaa)
+ncol(ny_noaa)
+nrow(ny_noaa)
+
+# Quantifying missing data
+sum(is.na(ny_noaa))
+colSums(is.na(ny_noaa))
+```
+This dataset includes information about NOAA stations in New York, including date, precipitation and snowfall levels, and maximum and minimum temperature. This dataset includes 7 variables and 2,595,176 observations, though a significant portion of observations are missing, most significantly for maximum and minimum temperature variables. This may be a problem when trying to draw conclusions about, for example, monthly minimum and maximum temperatures, if a certain month was particularly afflicted by missing values. 
+
+```{r, warning = FALSE}
+# Separating month, day, year
+ny_noaa_clean <- ny_noaa %>%
+  separate(date,
+           into = c("year", "month", "day"),
+           sep = "-")
+
+# Converting variable types and units
+ny_noaa_clean <- ny_noaa_clean %>%
+  mutate(
+    across(c(year, month, day, prcp, snow, snwd, tmax, tmin),
+           as.numeric),
+    prcp = prcp / 10,
+    tmax = tmax / 10,
+    tmin = tmin / 10
+  )
+
+head(ny_noaa_clean)
+
+# Most commonly observed values for snowfall
+common_snow_noaa <- ny_noaa_clean %>%
+  count(snow, sort = TRUE) %>%
+  slice_head(n = 10)
+
+common_snow_noaa
+```
+I cleaned the data by separating the date column into separate year, month, and day variables using the separate() function. I also converted all variables to numeric using the mutate() function. The most commonly observed values for snowfall in millimeters were 0 and NA. This makes sense because during most days of the year, it does not snow at all, and this dataset is missing many observations.
+
+```{r, warning = FALSE}
+# Filtering and calculating tmax means for January and July
+janjuly_tmax <- ny_noaa_clean %>%
+  filter(month %in% c(1, 7)) %>%
+  group_by(id, year, month) %>%
+  summarise(
+    mean_tmax = mean(tmax, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+head(janjuly_tmax)
+
+# Removing NaN values before plotting
+janjuly_tmax_no_nan <- janjuly_tmax %>%
+  filter(!is.nan(mean_tmax))
+
+# Plot: Tmax Jan & July across years, by station
+janjuly_tmax_plot <- ggplot(
+  janjuly_tmax_no_nan,
+  aes(
+    x = year,
+    y = mean_tmax,
+    color = id,
+    group = id
+  )
+) +
+  geom_line(alpha = 0.4, linewidth = 0.3) +
+  facet_wrap(
+    ~month, scales = "fixed",
+    labeller = labeller(
+      month = c("1" = "January", "7" = "July")
+    )
+  ) +
+  labs(
+    title = "Average Maximum Temperature by Station Across Years",
+    x = "Year",
+    y = "Average Maximum Temperature (°C)",
+    color = "Station"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    panel.spacing = unit(1, "cm")
+  )
+
+janjuly_tmax_plot
+```
+The average maximum temperature was significantly higher in July than in January across weather stations, as expected due to seasonal differences. There was quite a bit of variation in average maximum temperature readings between stations, but the overall temperature patterns of the stations were still relatively similar. There seems to be an undulating pattern of warmer and cooler maximum temperatures every few years. A few stations had unusually high or low average temperatures in certain years, such as the unusually cool July datapoint around 1988, which may represent outliers.
+
+```{r, warning = FALSE}
+# Plot: Tmax and Tmin for full dataset
+tmax_tmin_full <- ggplot(
+  ny_noaa_clean,
+  aes(x = tmin, y = tmax)
+) +
+  geom_bin2d() +
+  labs(
+    title = "Maximum vs. Minimum Temperature",
+    x = "Minimum Temperature (°C)",
+    y = "Maximum Temperature (°C)",
+    fill = "Count"
+  ) +
+  theme_minimal()
+
+# Plot: Distribution of snowfall 0-100 by year
+snow_distribution_plot <- ny_noaa_clean %>%
+  filter(snow > 0, snow < 100) %>%
+  ggplot(aes(x = factor(year), y = snow)) +
+  geom_boxplot() +
+  labs(
+    title = "Snowfall Distribution by Year",
+    x = "Year",
+    y = "Snowfall (mm)"
+  ) +
+  scale_x_discrete(
+  breaks = as.character(seq(1981, 2010, by = 5))
+) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(
+      angle = 90,
+      hjust = 1
+    )
+  )
+
+# Combining into a two-panel plot
+tmax_tmin_snow_plot <- tmax_tmin_full + snow_distribution_plot
+
+tmax_tmin_snow_plot
+```
+
+***PROBLEM 2***
+```{r}
+
+```
+
+
+***PROBLEM 3***
+```{r}
+
+```
