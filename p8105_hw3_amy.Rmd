@@ -31,7 +31,7 @@ colSums(is.na(ny_noaa))
 This dataset includes information about NOAA stations in New York, including date, precipitation and snowfall levels, and maximum and minimum temperature. This dataset includes 7 variables and 2,595,176 observations, though a significant portion of observations are missing, most significantly for maximum and minimum temperature variables. This may be a problem when trying to draw conclusions about, for example, monthly minimum and maximum temperatures, if a certain month was particularly afflicted by missing values. 
 
 ```{r, warning = FALSE}
-# Separating month, day, year
+# Separating date into month, day, year
 ny_noaa_clean <- ny_noaa %>%
   separate(date,
            into = c("year", "month", "day"),
