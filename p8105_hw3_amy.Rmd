@@ -17,20 +17,24 @@ library(p8105.datasets)
 data("ny_noaa")
 ```
 
-***PROBLEM 1***
+# PROBLEM 1
+## NOAA Data Overview
 ```{r, warning = FALSE}
+
 # Exploring the data
 head(ny_noaa)
-ncol(ny_noaa)
-nrow(ny_noaa)
+glimpse(ny_noaa)
 
 # Quantifying missing data
 sum(is.na(ny_noaa))
 colSums(is.na(ny_noaa))
+
 ```
 This dataset includes information about NOAA stations in New York, including date, precipitation and snowfall levels, and maximum and minimum temperature. This dataset includes 7 variables and 2,595,176 observations, though a significant portion of observations are missing, most significantly for maximum and minimum temperature variables. This may be a problem when trying to draw conclusions about, for example, monthly minimum and maximum temperatures, if a certain month was particularly afflicted by missing values. 
 
+## NOAA Data Cleaning
 ```{r, warning = FALSE}
+
 # Separating date into month, day, year
 ny_noaa_clean <- ny_noaa %>%
   separate(date,
@@ -40,14 +44,21 @@ ny_noaa_clean <- ny_noaa %>%
 # Converting variable types and units
 ny_noaa_clean <- ny_noaa_clean %>%
   mutate(
-    across(c(year, month, day, prcp, snow, snwd, tmax, tmin),
+    across(c(prcp, snow, snwd, tmax, tmin),
            as.numeric),
+    across(c(id, year, month, day), as.factor),
     prcp = prcp / 10,
     tmax = tmax / 10,
     tmin = tmin / 10
   )
 
 head(ny_noaa_clean)
+```
+
+I cleaned the data by separating the date column into separate year, month, and day variables using the separate() function. I also converted variable types to factor or numeric as appropriate using the mutate() function. 
+
+## Most Common Snowfall Values
+```{r, warning = FALSE}
 
 # Most commonly observed values for snowfall
 common_snow_noaa <- ny_noaa_clean %>%
@@ -55,13 +66,17 @@ common_snow_noaa <- ny_noaa_clean %>%
   slice_head(n = 10)
 
 common_snow_noaa
-```
-I cleaned the data by separating the date column into separate year, month, and day variables using the separate() function. I also converted all variables to numeric using the mutate() function. The most commonly observed values for snowfall in millimeters were 0 and NA. This makes sense because during most days of the year, it does not snow at all, and this dataset is missing many observations.
 
+```
+
+The most commonly observed values for snowfall in millimeters were 0 and NA. This makes sense because during most days of the year, it does not snow at all, and this dataset is missing many observations.
+
+## Plot: Average Maximum Temperature by Station Across Years
 ```{r, warning = FALSE}
+
 # Filtering and calculating tmax means for January and July
 janjuly_tmax <- ny_noaa_clean %>%
-  filter(month %in% c(1, 7)) %>%
+  filter(month %in% c("01", "07")) %>%
   group_by(id, year, month) %>%
   summarise(
     mean_tmax = mean(tmax, na.rm = TRUE),
@@ -91,6 +106,9 @@ janjuly_tmax_plot <- ggplot(
       month = c("1" = "January", "7" = "July")
     )
   ) +
+  scale_x_discrete(
+    breaks = as.factor(seq(1981, 2010, by = 5))
+    ) +
   labs(
     title = "Average Maximum Temperature by Station Across Years",
     x = "Year",
@@ -104,10 +122,14 @@ janjuly_tmax_plot <- ggplot(
   )
 
 janjuly_tmax_plot
+
 ```
+
 The average maximum temperature was significantly higher in July than in January across weather stations, as expected due to seasonal differences. There was quite a bit of variation in average maximum temperature readings between stations, but the overall temperature patterns of the stations were still relatively similar. There seems to be an undulating pattern of warmer and cooler maximum temperatures every few years. A few stations had unusually high or low average temperatures in certain years, such as the unusually cool July datapoint around 1988, which may represent outliers.
 
+## Plot: Snowfall Distribution by Year
 ```{r, warning = FALSE}
+
 # Plot: Tmax and Tmin for full dataset
 tmax_tmin_full <- ggplot(
   ny_noaa_clean,
@@ -147,16 +169,17 @@ snow_distribution_plot <- ny_noaa_clean %>%
 tmax_tmin_snow_plot <- tmax_tmin_full + snow_distribution_plot
 
 tmax_tmin_snow_plot
+
 ```
 
-***PROBLEM 2***
+# PROBLEM 2
+## Accelerometer Data Cleaning
 ```{r, warning = FALSE}
-# Exploring the data
+
+# Importing the data
 accel_demo_raw <- read.csv("data/nhanes_covar.csv", skip = 4)
-head(accel_demo_raw)
 
 accel_data_raw <- read.csv("data/nhanes_accel.csv")
-head(accel_data_raw)
 
 # Merging datasets by SEQN
 accel_data_clean <- merge(accel_demo_raw, accel_data_raw, by = "SEQN")
@@ -171,9 +194,9 @@ accel_data_clean <- mutate(
   sex = as.character(sex),
   sex = case_match(
     sex,
-    "1" ~ "male",
-    "2" ~ "female",
-    .default = "NA"
+    "1" ~ "Male",
+    "2" ~ "Female",
+    .default = NA_character_
   ),
   sex = as.factor(sex)
 )
@@ -182,7 +205,11 @@ accel_data_clean <- mutate(
 accel_data_clean <- accel_data_clean %>%
   drop_na(sex, age, bmi, education) %>%
   filter(age >= 21)
-head(accel_data_clean)
+
+```
+
+## Table: Number of Men and Women by Education Level
+```{r, warning = FALSE}
 
 # Creating a table of men and women by education level
 accel_data_ed_names <- mutate(
@@ -206,14 +233,21 @@ accel_education_table <- accel_data_ed_names %>%
 
 accel_education_table <- knitr::kable(
   accel_education_table,
-  col.names = c("Education Category", "Men", "Women"),
-  caption = "Number of Men and Women by Education Category"
+  col.names = c("Education Level", "Men", "Women"),
+  caption = "Number of Men and Women by Education Level"
 )
 accel_education_table
 
+```
+
+Looking at the table, it appears that there is not a large difference between the number of men and women in the groups with less than or more than a high school education, whereas women make up a noticeably higher proportion of the high school education group. Additionally, those with more than a high school education made up the largest group across both sexes.
+
+## Plot: Age Distribution by Sex and Education Level
+```{r, warning = FALSE}
+
 # Plot: Age distribution of men and women in each education category
 age_dist_ed_plot <- ggplot(
-  accel_data_ed_table,
+  accel_data_ed_names,
   aes(x = sex, y = age, fill = sex)
 ) +
   geom_boxplot() +
@@ -226,12 +260,14 @@ age_dist_ed_plot <- ggplot(
   ) +
   theme_minimal()
 age_dist_ed_plot
+
 ```
-Looking at the table, it appears that there is not a large difference between the number of males and females in the groups with less than or more than a high school education, whereas females make up a noticeably higher proportion of the high school education group. Additionally, those with more than a high school education made up the largest group across both sexes.
 
 Looking at the plot, participants with more than a high school education appear to trend younger than the other two education groups, with the median age being relatively similar between males and females. The median age between the sexes in the group with less than a high school education is also relatively similar, whereas in the high school education group, the age of males appears to trend younger than females.
 
+## Plot: Total Daily Activity by Age, Sex, and Education
 ```{r, warning = FALSE}
+
 # Aggregating total activity
 accel_total_act <- accel_data_ed_names %>%
   mutate(
@@ -257,11 +293,15 @@ accel_total_act_plot <- ggplot(
   ) +
   theme_minimal()
 accel_total_act_plot
+
 ```
+
 Looking at the plot, it appears that total daily activity generally decreases with age across all education categories, although the trends vary between males and females. In the high school education group, activity levels appear to decline after around age 40 for both sexes. In the less than high school education group, activity also generally decreases with age, with some fluctuations in the trend lines. In the more than high school education group, activity levels are more variable, but both males and females show a general decline at older ages. There are some differences between males and females, but neither sex consistently has higher activity across age groups or education categories. Overall, the plot shows substantial individual variation in activity levels.
 
+## Plot: Daily Activity Courses by Education and Sex
 ```{r, warning = FALSE}
-# Reshaping data 
+
+# Making the data longer and converting to hours
 accel_data_long <- accel_data_ed_names %>%
   pivot_longer(
     cols = starts_with("min"),
@@ -293,10 +333,170 @@ accel_time_course_plot <- ggplot(
   theme_minimal()
 
 accel_time_course_plot
+
 ```
+
 Looking at the plot, it appears that there are relatively similar daily activity patterns across all three education levels. For both males and females, activity is lowest around 4 AM, and increases quickly beginning around 6–8 AM. Activity stays relatively high throughout the day, then declines during the evening, particularly between 8PM-12AM. In the groups with less than high school and more than high school education, females generally show higher average activity than men during the day. In the high school education group, the differences between males and females are smaller, but female activity is somewhat higher during the middle of the day.
 
-***PROBLEM 3***
+# PROBLEM 3
+## Citi Bike Data Cleaning & Overview
 ```{r, warning = FALSE}
 
+# Importing the data
+citi_jan_2020 <- read_csv("data/citi_bike/citi_jan_2020.csv")
+citi_jan_2024 <- read_csv("data/citi_bike/citi_jan_2024.csv")
+citi_july_2020 <- read_csv("data/citi_bike/citi_july_2020.csv")
+citi_july_2024 <- read_csv("data/citi_bike/citi_july_2024.csv")
+
+# Combining the datasets
+citi_data_clean <- bind_rows(
+  citi_jan_2020 %>% mutate(year = 2020, month = "January"),
+  citi_jan_2024 %>% mutate(year = 2024, month = "January"),
+  citi_july_2020 %>% mutate(year = 2020, month = "July"),
+  citi_july_2024 %>% mutate(year = 2024, month = "July")
+)
+
+# Cleaning variable names
+citi_data_clean <- janitor::clean_names(citi_data_clean)
+
+# Converting variable types
+citi_data_clean <- citi_data_clean %>%
+  mutate(
+    ride_id = as.factor(ride_id),
+    year = as.factor(year),
+    month = factor(month, levels = c("January", "July")),
+    weekdays = factor(
+      weekdays,
+      levels = c(
+        "Monday", "Tuesday", "Wednesday", "Thursday",
+        "Friday", "Saturday", "Sunday"
+      )
+    ),
+    rideable_type = as.factor(rideable_type),
+    member_casual = as.factor(member_casual)
+  )
+       
+# Exploring the cleaned dataset
+head(citi_data_clean)
+glimpse(citi_data_clean)
+
 ```
+
+This dataset contains 1% of all Citi Bike rides with less than a 4 hour duration in one of four months: January 2020, July 2020, January 2024, and July 2024. The dataset includes ride ID, duration of the ride in minutes, starting and ending station names, Citi Bike membership status of the rider, and the date of the ride, including weekday, month and year. This dataset includes a total of 99,485 observations.
+
+## Table: Number of Citi Bike Rides by Year, Month, and Membership Status
+```{r, warning = FALSE}
+
+# Counting rides by year, month, and membership status
+citi_rides_table <- citi_data_clean %>%
+  count(year, month, member_casual) %>%
+  pivot_wider(
+    names_from = member_casual,
+    values_from = n,
+    values_fill = 0
+  )
+
+# Creating a reader-friendly table
+knitr::kable(
+  citi_rides_table,
+  col.names = c("Year", "Month", "Casual Riders", "Members"),
+  caption = "Number of Citi Bike Rides by Year, Month, and Membership Status"
+)
+
+```
+
+The table shows that Citi Bike members account for more rides than casual riders across all four time periods. For both members and casual riders, the number of rides is higher in July than in January. Rides also increased between 2020 and 2024 in both months for members and casual riders, with the largest increase occurring for members in July of 2024.
+
+## Table: Five Most Popular Citi Bike Starting Stations in July 2024
+```{r, warning = FALSE}
+
+# Identifying five most popular starting stations in July 2024
+citi_top_stations <- citi_data_clean %>%
+  filter(year == "2024", month == "July") %>%
+  count(start_station_name, sort = TRUE) %>%
+  slice_head(n = 5)
+head(citi_top_stations)
+
+# Creating a reader-friendly table
+knitr::kable(
+  citi_top_stations,
+  col.names = c("Starting Station", "Number of Rides"),
+  caption = "Five Most Popular Citi Bike Starting Stations in July 2024"
+)
+
+```
+
+The five most popular starting stations in July 2024 had relatively similar numbers of rides, ranging from 146 to 163. Pier 61 at Chelsea Piers was the most popular starting station with 163 rides, followed by University Pl & E 14 St with 155 rides.
+
+## Plot: Median Citi Bike Ride Duration by Day of the Week
+```{r, warning = FALSE}
+
+# Calculating median ride duration
+citi_median_duration <- citi_data_clean %>%
+  group_by(year, month, weekdays) %>%
+  summarise(
+    median_duration = median(duration, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# Plot: Median ride duration by weekday, month, and year
+citi_median_duration_plot <- ggplot(
+  citi_median_duration,
+  aes(
+    x = weekdays,
+    y = median_duration,
+    color = month,
+    group = month
+  )
+) +
+  geom_point() +
+  geom_line() +
+  facet_wrap(~ year) +
+  labs(
+    title = "Median Citi Bike Ride Duration by Day of the Week",
+    x = "Day of the Week",
+    y = "Median Ride Duration (minutes)",
+    color = "Month"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+citi_median_duration_plot
+```
+
+Overall, median ride duration was generally higher in 2020 than in 2024. Median ride duration across both years was higher in July than in January. In 2020, median ride duration increased substantially on weekends, especially in July. A similar but less dramatic weekend pattern is seen in 2024, with Saturday having the longest median ride duration in both months, and Sunday showing a noted decrease in ride duration in January.
+
+
+```{r, warning = FALSE}
+# Filtering only 2024 data
+citi_2024 <- citi_data_clean %>%
+  filter(year == "2024")
+
+# Plot: Ride duration by month, membership, and bike type
+citi_duration_2024_plot <- ggplot(
+  citi_2024,
+  aes(x = month, y = duration, fill = month)
+) +
+  geom_boxplot(outlier.alpha = 0.2) +
+  facet_grid(
+    member_casual ~ rideable_type,
+    labeller = labeller(
+      rideable_type = c(
+        "classic_bike" = "Classic Bike",
+        "electric_bike" = "Electric Bike")
+      )
+    ) +
+  labs(
+    title = "Citi Bike Ride Duration by Month, Membership, and Bike Type",
+    x = "Month",
+    y = "Ride Duration (minutes)",
+    fill = "Month"
+  ) +
+  theme_minimal()
+
+citi_duration_2024_plot
+```
+
+Looking at the plot, casual riders generally have a longer median ride duration than members for both classic and electric bikes. Ride duration is also higher in July than in January across all groups. Differences between classic and electric bike ride duration seem relatively small compared to the differences between casual riders and members. All groups show many high-duration outliers, with casual riders using electric bikes in July having the largest apparent variability.
