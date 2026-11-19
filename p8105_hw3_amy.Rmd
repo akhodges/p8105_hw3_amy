@@ -5,6 +5,22 @@ date: "2026-10-29"
 output: html_document
 ---
 
+# Jenni's Review
+Total Score (were I really grading this): 96%
+
+Problem 0: 20/20
+
+Problem 1: I would give you full credit for this.
+Consider adding what the rows in the dataset correspond to in your description. For example, are the rows station-day level observations? Are they station-hour observations?
+I was unable to load the dataset to double check the output, but the code all looks really good!
+
+Problem 2: 40/40
+I think you did a great job with this overall!
+
+Problem 3: 36/40
+Same comment as for problem 1 about including the identify of each row (in this case, unique rides) as part of your dataset description.
+For the final plot on median citi bike ride duration and month, membership, and bike type, I think the boxplots are actually a bit hard to read. I would consider a different plot type, such as a violin plot, a bar plot, or something else.
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
